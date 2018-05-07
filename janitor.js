@@ -6,8 +6,8 @@ const
     fs = require("fs"),
     chalk = require("chalk");
 
-const
-    HR = chalk.gray("-".repeat(80));
+let
+    SHOW_ONLY_DIRTY = false;
 
 
 function getFilesInDirectory(dirName) {
@@ -76,13 +76,19 @@ async function getGitBranches() {
     return await runCommandGetOutput("git for-each-ref --format='%(objecttype) %(refname) %(objectname) %(upstream)'");
 }
 
+/**
+ * @returns {Promise<[String, Boolean]>} a tuple with the output string and a boolean signaling whether this repository
+ *                                       is dirty.
+ */
 async function analyzeGitRepositoryStatus() {
+    let output = "";
+
     const status = await getGitStatus();
-    let conflitcs = 0;
+    let conflicts = 0;
     let changedFileNames = new Set();
     status.split("\n").map(fileStatus => {
         if (/^UU /.test(fileStatus)) {
-            conflitcs++;
+            conflicts++;
         } else if (/^(.[MD]|\?\?|[AMDR].) /.test(fileStatus)) {  // modified, untracked, indexed
             const fileName = fileStatus.slice(3);
             changedFileNames.add(fileName);
@@ -91,16 +97,25 @@ async function analyzeGitRepositoryStatus() {
 
     const statusChanged = changedFileNames.size > 0 ?
         chalk.yellow(`${changedFileNames.size} file${changedFileNames.size > 1 ? "s" : ""} changed or added`) : "";
-    const statusConflicts = conflitcs ? +chalk.red(`${conflitcs} conflict${conflitcs > 1 ? "s" : ""}`) : "";
+    const statusConflicts = conflicts ? +chalk.red(`${conflicts} conflict${conflicts > 1 ? "s" : ""}`) : "";
     if (statusChanged.length + statusConflicts.length > 0) {
         const comma = statusChanged.length > 0 && statusConflicts.length > 0 ? ", " : "";
-        console.info(`  status: ${statusChanged}${comma}${statusConflicts}`);
+        output += `  status: ${statusChanged}${comma}${statusConflicts}` + "\n";
     } else {
-        console.info(`  status: ${chalk.green("clean")}`);
+        output += `  status: ${chalk.green("clean")}` + "\n";
     }
+
+    return [output, conflicts + changedFileNames.size > 0];
 }
 
+/**
+ * @returns {Promise<[String, Boolean]>} a tuple with the output string and a boolean signaling whether this repository
+ *                                       is dirty.
+ */
 async function analyzeGitRepositoryBranches() {
+    let output = "";
+    let isDirty = false;
+
     const branches = await getGitBranches();
 
     const refByName = new Map();
@@ -117,31 +132,49 @@ async function analyzeGitRepositoryBranches() {
             const ref = refByName.get(upstream);
             const upstreamCommitHash = ref ? ref[0] : undefined;
             const matchesUpstream = upstreamCommitHash === commitHash;
+            isDirty |= !matchesUpstream;
             const info = matchesUpstream ? chalk.green("nothing to push") : chalk.red(ref ? "must push" : "local only");
-            console.info(chalk.gray("  > ") + branchName + " " + info);
+            output += chalk.gray("  > ") + branchName + " " + info + "\n";
         }
     }
+
+    return [output, isDirty];
 }
 
+/**
+ * @returns {Promise<[String, Boolean]>} a tuple with the output string and a boolean signaling whether this repository
+ *                                       is dirty.
+ */
 async function analyzeGitRepository(dirName) {
     const parentDirName = process.cwd();
     process.chdir(dirName);
 
-    await analyzeGitRepositoryStatus();
-    await analyzeGitRepositoryBranches();
+    [statusOutput, isStatusDirty] = await analyzeGitRepositoryStatus();
+    [branchesOutput, areBranchesDirty]  = await analyzeGitRepositoryBranches();
 
     process.chdir(parentDirName);
+    return [statusOutput + branchesOutput, isStatusDirty | areBranchesDirty];
 }
 
+/**
+ * @param {String} rootDirName
+ * @param {String} dirName
+ * @returns {Promise<Boolean>} whether this directory is dirty
+ */
 async function analyzeDirectory(rootDirName, dirName) {
     const fullPath = path.join(rootDirName, dirName);
     const isGit = isGitRepository(fullPath);
     const gitTag = isGit ? "git repository" : chalk.red("unversioned");
-    console.info(`> ${chalk.yellow(dirName)}: ${gitTag}`);
+    let directoryIsDirty = !isGit;
+    let output = "";
     if (isGit) {
-        await analyzeGitRepository(fullPath);
+        [output, repoIsDirty] = await analyzeGitRepository(fullPath);
     }
-    console.info(HR);
+    if (!SHOW_ONLY_DIRTY || (directoryIsDirty || repoIsDirty)) {
+        console.info(`> ${chalk.yellow(dirName)}: ${gitTag}`);
+        console.info(output);
+    }
+    return directoryIsDirty || repoIsDirty;
 }
 
 /**
@@ -151,8 +184,9 @@ async function analyzeDirectory(rootDirName, dirName) {
  */
 async function run(rootDirName, ...params) {
     for (const param of params) {
-        if (param === "--no-color") {
-            chalk.enabled = false;
+        switch (param) {
+            case "--no-color": chalk.enabled = false; break;
+            case "--only-dirty": SHOW_ONLY_DIRTY = true; break;
         }
     }
 
@@ -160,12 +194,19 @@ async function run(rootDirName, ...params) {
     if (subDirNames.includes(".git")) {
         console.info("Root directory is a git repository.\n");
 
-        await analyzeDirectory(rootDirName);
+        await analyzeDirectory("", rootDirName);
     } else {
         console.info("Subdirectories found: " + subDirNames.length + "\n");
 
+        let dirtyCount = 0;
         for (const dirName of subDirNames) {
-            await analyzeDirectory(rootDirName, dirName)
+            dirtyCount += await analyzeDirectory(rootDirName, dirName)
+        }
+
+        if (dirtyCount > 0) {
+            console.info("Repositories in need of attention: " + dirtyCount);
+        } else {
+            console.info("All repositories are clean!");
         }
     }
 }
