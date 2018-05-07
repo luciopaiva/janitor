@@ -65,7 +65,7 @@ Here's Janitor's output:
       > other-branch local only
     ----------------------------------------
 
-For each folder, the line `status` reports current working directory status. It can be "clean" or tell how many files are modified and need to be committed.
+For each folder, Janitor checks if it is a git repository or not. For folders with no repository, "unversioned" will be printed. For git repositories, the line "status" reports current working directory status. It can be either "clean" or tell how many files are modified and need to be committed (and will also warn about eventual conflicts).
 
 Following that comes a list of local branches and their statuses. Branches can be marked as
 
