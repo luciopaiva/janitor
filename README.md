@@ -3,7 +3,7 @@
 
 ![Sample output](janitor.png)
 
-Simple Node.js script to scan subdirectories of a given folder looking for git repositories. For each repository found, Janitor reports what's the working directory status as well as the situation of each local branch.
+Janitor is a tool to report status of several git repositories at once. Janitor reports working directory status as well as the situation of each local branch.
 
 I made this because I had dozens of folders in a hard drive which was about to be formatted and I wanted to know if there were any changes in my projects that were not uploaded to the could yet.
 
