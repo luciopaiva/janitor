@@ -30,9 +30,22 @@ function getSubdirectoryNames(rootDirName) {
         .filter(fileName => fs.statSync(path.join(rootDirName, fileName)).isDirectory());
 }
 
-function isGitRepository(dirName) {
-    return getFilesInDirectory(dirName)
-        .some(fileName => fileName === ".git" && fs.statSync(path.join(dirName, fileName)).isDirectory());
+/**
+ * @param {String} dirName
+ * @returns {{ isGit: Boolean, isMercurial: Boolean }}
+ */
+function isGitOrMercurialRepository(dirName) {
+    const isDirectory = (fileName) => fs.statSync(path.join(dirName, fileName)).isDirectory();
+
+    for (const fileName of getFilesInDirectory(dirName)) {
+        if (fileName === ".git" && isDirectory(fileName)) {
+            return { isGit: true, isMercurial: false };
+        } else if (fileName === ".hg" && isDirectory(fileName)) {
+            return { isGit: false, isMercurial: true };
+        }
+    }
+
+    return { isGit: false, isMercurial: false };
 }
 
 async function runCommandGetOutput(command) {
@@ -163,15 +176,17 @@ async function analyzeGitRepository(dirName) {
  */
 async function analyzeDirectory(rootDirName, dirName) {
     const fullPath = path.join(rootDirName, dirName);
-    const isGit = isGitRepository(fullPath);
-    const gitTag = isGit ? "git repository" : chalk.red("unversioned");
+    const {isGit, isMercurial} = isGitOrMercurialRepository(fullPath);
+
+    const repoType = isGit ? "git repository" :
+        (isMercurial ? chalk.red("mercurial repository (unsupported)") : chalk.red("unversioned"));
     let directoryIsDirty = !isGit;
     let output = "";
     if (isGit) {
         [output, repoIsDirty] = await analyzeGitRepository(fullPath);
     }
     if (!SHOW_ONLY_DIRTY || (directoryIsDirty || repoIsDirty)) {
-        console.info(`${chalk.yellow("/" + dirName)}: ${gitTag}`);
+        console.info(`${chalk.yellow("/" + dirName)}: ${repoType}`);
         console.info(output);
     }
     return directoryIsDirty || repoIsDirty;
