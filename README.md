@@ -63,3 +63,12 @@ Following that comes a list of local branches and their statuses. Branches can b
 - `nothing to push`: no need to worry about this branch
 - `must push`: there are local commits that were not pushed to the remote repository
 - `local only`: branch only exists locally
+
+## Running Janitor from anywhere
+
+I wrote a simple Bash script to let me run Janitor from any folder. To use it, add this link to any of your `PATH` folders:
+
+    cd <SOME_FOLDER_IN_YOUR_PATH_ENV_VAR>
+    ln -s <PATH_TO_JANITOR>/janitor.sh janitor
+
+And then simply `cd` to a given folder and run `janitor` from there.
