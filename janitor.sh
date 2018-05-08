@@ -9,5 +9,5 @@ CUR_DIR="${PWD}"
 
 # must switch to Janitor's directory, otherwise Node won't find our scripts
 pushd "${SCRIPT_DIR}" > /dev/null
-node janitor "${CUR_DIR}"
+node janitor "${CUR_DIR}" $@
 popd > /dev/null
