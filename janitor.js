@@ -96,7 +96,7 @@ async function analyzeGitRepositoryStatus() {
     });
 
     const statusChanged = changedFileNames.size > 0 ?
-        chalk.yellow(`${changedFileNames.size} file${changedFileNames.size > 1 ? "s" : ""} changed or added`) : "";
+        chalk.red(`${changedFileNames.size} file${changedFileNames.size > 1 ? "s" : ""} changed or added`) : "";
     const statusConflicts = conflicts ? +chalk.red(`${conflicts} conflict${conflicts > 1 ? "s" : ""}`) : "";
     if (statusChanged.length + statusConflicts.length > 0) {
         const comma = statusChanged.length > 0 && statusConflicts.length > 0 ? ", " : "";
@@ -134,7 +134,7 @@ async function analyzeGitRepositoryBranches() {
             const matchesUpstream = upstreamCommitHash === commitHash;
             isDirty |= !matchesUpstream;
             const info = matchesUpstream ? chalk.green("nothing to push") : chalk.red(ref ? "must push" : "local only");
-            output += chalk.gray("  > ") + branchName + " " + info + "\n";
+            output += chalk.gray("  + ") + branchName + ": " + info + "\n";
         }
     }
 
@@ -171,7 +171,7 @@ async function analyzeDirectory(rootDirName, dirName) {
         [output, repoIsDirty] = await analyzeGitRepository(fullPath);
     }
     if (!SHOW_ONLY_DIRTY || (directoryIsDirty || repoIsDirty)) {
-        console.info(`> ${chalk.yellow(dirName)}: ${gitTag}`);
+        console.info(`${chalk.yellow("/" + dirName)}: ${gitTag}`);
         console.info(output);
     }
     return directoryIsDirty || repoIsDirty;
