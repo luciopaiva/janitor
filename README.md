@@ -5,7 +5,7 @@
 
 Janitor is a tool to report status of several git repositories at once. For each repository, it reports working directory status as well as the situation of each local branch.
 
-I made this because I had dozens of folders in a hard drive which was about to be formatted and I wanted to know if there were any changes in my projects that were not uploaded to the could yet.
+I made this because I had dozens of folders in a hard drive which was about to be formatted and I wanted to know if there were any changes in my projects that were not uploaded to the cloud yet.
 
 ## How to install
 
